@@ -1,0 +1,13 @@
+.env
+*.session
+*.session-journal
+__pycache__/
+downloads/
+transfer_log.txt
+transfer_stats.json
+schedules.json
+points.json
+bot_mode.json
+protection.json
+system_groups.json
+clone_backup.json
