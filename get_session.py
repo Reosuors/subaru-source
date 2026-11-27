@@ -1,14 +1,25 @@
 # -*- coding: utf-8 -*-
 """
-يولّد جلسة نصية (SESSION_STRING) لنسخة الاستضافة.
-شغّله مرة وحدة على جهازك فقط، وانسخ النص اللي بيطلع وحطه في Render
-كمتغير بيئة باسم SESSION_STRING. لا تشارك هالنص مع حدا أبداً.
+جلسة نسخة الاستضافة — عندك طريقتين، اختار اللي بدك إياها:
 
-الاستخدام:
-    pip install telethon python-dotenv
+1) توليد تلقائي (الافتراضي):
     python get_session.py
+   بيطلب رقم هاتفك والكود، وبيطلع لك SESSION_STRING جاهز.
+
+2) يدوي — أنت بتلصق الجلسة بيدك (مثلاً جلسة عندك من قبل،
+   أو جلسة طلعتها من بوت / أداة تانية):
+    python get_session.py --paste
+   بيسألك تلصق النص، بيتحقق إنه جلسة صحيحة، وبيحفظها
+   بملف session_string.txt (ما بينرفع على GitHub أبداً).
+
+3) تحويل ملف جلسة عندك لنص:
+    python convert_session.py
+   بيحوّل ملف subaru.session اللي عندك لـ SESSION_STRING.
+
+⚠️ الجلسة مفتاح حسابك — لا تشاركها مع حدا أبداً.
 """
 import os
+import sys
 from dotenv import load_dotenv
 from telethon import TelegramClient
 from telethon.sessions import StringSession
@@ -18,12 +29,53 @@ load_dotenv()
 API_ID = int(os.getenv("API_ID", "0") or 0)
 API_HASH = os.getenv("API_HASH", "")
 
-if API_ID == 0 or not API_HASH:
-    print("❌ حط API_ID و API_HASH في ملف .env أولاً (من https://my.telegram.org/apps)")
-    raise SystemExit(1)
 
-print("📱 بيوصلك كود على تيليجرام — اكتبه هون.")
-with TelegramClient(StringSession(), API_ID, API_HASH) as client:
-    print("\n✅ انسخ هالنص كامل وحطه في Render كمتغير SESSION_STRING:\n")
-    print(client.session.save())
-    print("\n⚠️ لا تشاركه مع حدا — هو مفتاح حسابك.")
+def save_manual_session(text):
+    """يتحقق من نص جلسة لصقته بيدك ويحفظه."""
+    text = (text or "").strip()
+    if not text:
+        print("❌ ما لصقت شي.")
+        return False
+    try:
+        StringSession(text)  # بيطلع خطأ إذا النص مو جلسة صحيحة
+    except Exception as e:
+        print(f"❌ هالنص مو جلسة صحيحة: {e}")
+        print("   تأكد إنك نسخت النص كامل بدون مسافات زيادة أو نقص.")
+        return False
+    with open("session_string.txt", "w", encoding="utf-8") as f:
+        f.write(text)
+    print("✅ الجلسة صحيحة وانحفظت بملف session_string.txt")
+    print("   هسا تقدر تنسخ محتواه وتحطه في Render كمتغير SESSION_STRING،")
+    print("   أو تترك الملف هون إذا بتشغل السورس على جهازك.")
+    print("   ⚠️ لا ترفع هالملف على GitHub — هو مفتاح حسابك.")
+    return True
+
+
+def main():
+    if "--paste" in sys.argv or "--manual" in sys.argv:
+        print("📋 الصق الجلسة النصية تبعك هون واضغط Enter:")
+        text = input().strip()
+        if not text:
+            # إذا لصق نص طويل على سطور، input بياخد أول سطر بس
+            print("❌ ما وصل نص. جرّب تلصقه بسطر واحد كامل.")
+            return
+        save_manual_session(text)
+        return
+
+    if API_ID == 0 or not API_HASH:
+        print("❌ حط API_ID و API_HASH في ملف .env أولاً (من https://my.telegram.org/apps)")
+        raise SystemExit(1)
+
+    print("📱 بيوصلك كود على تيليجرام — اكتبه هون.")
+    with TelegramClient(StringSession(), API_ID, API_HASH) as client:
+        session = client.session.save()
+        print("\n✅ انسخ هالنص كامل وحطه في Render كمتغير SESSION_STRING:\n")
+        print(session)
+        print("\n💾 وبحفظه لك كمان بملف session_string.txt عشان تلاقيه جاهز.")
+        with open("session_string.txt", "w", encoding="utf-8") as f:
+            f.write(session)
+        print("⚠️ لا تشاركه مع حدا — هو مفتاح حسابك.")
+
+
+if __name__ == "__main__":
+    main()

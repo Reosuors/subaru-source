@@ -16,9 +16,21 @@ SESSION_NAME = os.getenv("SESSION_NAME", "subaru")
 
 # نسخة الاستضافة: جلسة نصية بدل ملف subaru.session
 # لأن ملفات الاستضافة المجانية بتنمسح مع كل إعادة تشغيل،
-# الجلسة بتنحفظ كنص في متغير SESSION_STRING (بتجيبه من get_session.py)
-# إذا كان فاضي، السورس بيرجع لملف الجلسة العادي
-SESSION_STRING = os.getenv("SESSION_STRING", "")
+# الجلسة بتنحفظ كنص في متغير SESSION_STRING.
+# عندك 3 طرق تحط الجلسة بيدك — اختار وحدة:
+#   1) متغير بيئة SESSION_STRING في Render (الطريقة المفضلة)
+#   2) ملف session_string.txt جنب main.py — الصق فيه النص واحفظه
+#   3) سكربت get_session.py --paste — بيسألك تلصق النص وهو بيتحقق منه
+# إذا ما كان في جلسة نصية، السورس بيرجع لملف الجلسة العادي subaru.session
+SESSION_STRING = os.getenv("SESSION_STRING", "").strip()
+if not SESSION_STRING:
+    try:
+        _session_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "session_string.txt")
+        if os.path.exists(_session_file):
+            with open(_session_file, encoding="utf-8") as _f:
+                SESSION_STRING = _f.read().strip()
+    except Exception:
+        pass
 
 # منفذ سيرفر الصحة (Render بيعطيه تلقائياً في متغير PORT)
 PORT = int(os.getenv("PORT", "10000") or 10000)
