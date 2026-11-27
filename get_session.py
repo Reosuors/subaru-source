@@ -74,7 +74,16 @@ def main():
         print("\n💾 وبحفظه لك كمان بملف session_string.txt عشان تلاقيه جاهز.")
         with open("session_string.txt", "w", encoding="utf-8") as f:
             f.write(session)
-        print("⚠️ لا تشاركه مع حدا — هو مفتاح حسابك.")
+        # إرسال الجلسة مقسّمة للرسائل المحفوظة (Saved Messages)
+        send = input("\n📩 بدك أبعت الجلسة لرسائلك المحفوظة على تيليجرام؟ (y/n): ").strip().lower()
+        if send in ("y", "yes", "نعم", "اه"):
+            parts = [session[i:i + 100] for i in range(0, len(session), 100)]
+            client.send_message("me", f"🍥 جلسة سورس سوبارو — {len(parts)} أجزاء، اجمعهم ورا بعض بدون مسافات:")
+            for i, part in enumerate(parts, 1):
+                client.send_message("me", f"جزء {i}/{len(parts)}:\n`{part}`")
+            client.send_message("me", "✅ هاي جلستك كاملة — لا تشاركها مع حدا، هي مفتاح حسابك.")
+            print(f"✅ انبعتت الجلسة لرسائلك المحفوظة على {len(parts)} جزء.")
+        print("⚠️ لا تشاركها مع حدا — هي مفتاح حسابك.")
 
 
 if __name__ == "__main__":
