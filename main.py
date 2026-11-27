@@ -1022,8 +1022,9 @@ async def send_mode_selection():
         print(f"⚠️ ما قدرت أبعت رسالة اختيار البوت: {e}")
 
 
-@client.on(events.NewMessage(outgoing=True, pattern=r"^\.البوت$"))
+@client.on(events.NewMessage(outgoing=True, pattern=r"^\.البوت(?:\s+(.+))?$"))
 async def bot_mode_cmd(event):
+    arg = (event.pattern_match.group(1) or "").strip().lower()
     if not BOT_TOKEN:
         await event.edit(
             "❌ **ما في توكن بوت بعد!**\n\n"
@@ -1034,13 +1035,23 @@ async def bot_mode_cmd(event):
             "4. أعد تشغيل السورس، وراح تطلع لك رسالة اختيار النوع بأزرار"
         )
         return
+    # اختيار مباشر بدون أزرار: .البوت تواصل / .البوت حماية / .البوت الكل
+    modes = {"تواصل": "contact", "contact": "contact", "حماية": "protection",
+             "protection": "protection", "الكل": "all", "كل": "all", "all": "all"}
+    if arg in modes:
+        text = await set_bot_mode(modes[arg])
+        await event.edit(text)
+        return
+    if arg:
+        await event.edit("❌ النوع مو معروف. اكتب: `.البوت تواصل` أو `.البوت حماية` أو `.البوت الكل`")
+        return
     try:
         await event.delete()
     except Exception:
         pass
     await client.send_message(
         event.chat_id,
-        f"🤖 **اختار نوع البوت:**\n\nالنوع الحالي: {bot_mode_label()}\n\n📩 تواصل | 🛡️ حماية قروبات | ✅ الكل",
+        f"🤖 **اختار نوع البوت:**\n\nالنوع الحالي: {bot_mode_label()}\n\n📩 تواصل | 🛡️ حماية قروبات | ✅ الكل\n\n💡 أو اكتب مباشرة: `.البوت تواصل` / `.البوت حماية` / `.البوت الكل`",
         buttons=mode_buttons(),
     )
 
@@ -1749,6 +1760,22 @@ async def setup_bot_client():
     await bot_client.start(bot_token=BOT_TOKEN)
     me = await bot_client.get_me()
     print(f"🤖 بوت BotFather شغال: @{me.username} — الوضع: {bot_mode_label()}")
+
+    @bot_client.on(events.CallbackQuery)
+    async def bot_callback(event):
+        """ضغطات أزرار رسائل البوت نفسه (مثل اختيار النوع)."""
+        data = event.data.decode(errors="ignore")
+        if data.startswith("mode:"):
+            mode = data[5:]
+            if mode in ("contact", "protection", "all"):
+                text = await set_bot_mode(mode)
+                try:
+                    await event.edit(text, buttons=mode_buttons())
+                except Exception:
+                    await event.answer("تم ✅")
+                await event.answer()
+                return
+        await event.answer()
 
     @bot_client.on(events.NewMessage(pattern=r"^/start"))
     async def bot_start(event):
