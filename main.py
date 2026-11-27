@@ -2990,20 +2990,53 @@ async def clone_cmd(event):
         return
 
     # الصورة: نحمّل صورته ونحطها صورة لحسابك
+    # (نحمّلها كـ bytes مباشرة — التحميل لملف كان يفشل بصمت أحياناً
+    #  إذا كان الملف قديم أو الصورة من رد بدون بيانات كاملة)
     photo_ok = False
+    photo_error = ""
     clone_photo_id = None
     try:
-        downloaded = await client.download_profile_photo(target, file=CLONE_PHOTO)
-        if downloaded:
-            uploaded = await client.upload_file(CLONE_PHOTO)
-            result = await client(UploadProfilePhotoRequest(uploaded))
+        # نمسح أي صورة انتحال قديمة عشان ما تنرفع بالغلط
+        try:
+            os.remove(CLONE_PHOTO)
+        except Exception:
+            pass
+        photo_bytes = await client.download_profile_photo(target, file=bytes)
+        if not photo_bytes:
+            # جرّب نجيب بياناته الكاملة أولاً ثم نحمّل الصورة منها
+            try:
+                from telethon.tl.functions.users import GetFullUserRequest
+                full_again = await client(GetFullUserRequest(target.id))
+                photo_bytes = await client.download_profile_photo(
+                    full_again.users[0] if getattr(full_again, "users", None) else target,
+                    file=bytes,
+                )
+            except Exception:
+                photo_bytes = None
+        if photo_bytes:
+            # نحفظها كملف كمان (عشان .ارجاع يقدر يحذفها) ونرفعها
+            with open(CLONE_PHOTO, "wb") as _f:
+                _f.write(photo_bytes)
+            uploaded = await client.upload_file(photo_bytes)
+            result = await client(UploadProfilePhotoRequest(file=uploaded))
             photo_ok = True
             # نحفظ آيدي الصورة الجديدة عشان نحذفها عند الإرجاع
             try:
                 clone_photo_id = result.photo.id
             except Exception:
                 pass
+            # تأكيد: هل صارت الصورة فعلاً صورة حسابك الحالية؟
+            try:
+                me_after = await client.get_me()
+                if not getattr(me_after, "photo", None):
+                    photo_ok = False
+                    photo_error = "الرفع تم بس الصورة ما ظهرت كصورة حسابك"
+            except Exception:
+                pass
+        else:
+            photo_error = "ما عنده صورة ظاهرة لك (ممكن مخفيها بإعدادات الخصوصية)"
     except Exception as e:
+        photo_error = str(e)
         print(f"⚠️ ما قدرت أنسخ الصورة: {e}")
 
     if clone_photo_id:
@@ -3024,7 +3057,7 @@ async def clone_cmd(event):
         f"🎭 **تم الانتحال!**\n\n"
         f"👤 الاسم صار: {target.first_name} {target.last_name or ''}\n"
         f"📝 البايو صار: {target_about}\n"
-        f"🖼️ الصورة: {'تم نسخها ✅' if photo_ok else 'ما عنده صورة أو ما قدرت أنسخها ⚠️'}"
+        f"🖼️ الصورة: {'تم نسخها ✅' if photo_ok else 'ما اننسخت ⚠️' + (f' — {photo_error}' if photo_error else '')}"
         f"{username_note}\n\n"
         "للإرجاع اكتب: `.ارجاع`"
     )
