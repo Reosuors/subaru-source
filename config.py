@@ -4,9 +4,24 @@
 حط بياناتك هنا، أو حطها في ملف .env
 """
 import os
-from dotenv import load_dotenv
 
-load_dotenv()
+# python-dotenv اختياري: إذا مش مثبّت (مثل Pydroid) بنقرأ ملف .env يدوياً
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    try:
+        _env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+        if os.path.exists(_env_path):
+            with open(_env_path, encoding="utf-8") as _f:
+                for _line in _f:
+                    _line = _line.strip()
+                    if not _line or _line.startswith("#") or "=" not in _line:
+                        continue
+                    _k, _v = _line.split("=", 1)
+                    os.environ.setdefault(_k.strip(), _v.strip().strip('"').strip("'"))
+    except Exception:
+        pass
 
 # من موقع https://my.telegram.org/apps
 API_ID = int(os.getenv("API_ID", "0") or 0)
