@@ -861,7 +861,9 @@ COMMAND_SECTIONS = {
 `.اختراق` — تهكير وهمي بتصميم ماتريكس
 `.فيروس` — فيروس وهمي (مزح فقط!)"""),
 }
-COMMANDS_TEXT = "✦ ━━━━━━━━━━━ ✦\n   📜 **أوامر سورس سوبارو** 📜\n✦ ━━━━━━━━━━━ ✦\n\nاختر قسم من الأزرار تحت 👇"
+COMMANDS_TEXT = ("✦ ━━━━━━━━━━━ ✦\n   📜 **أوامر سورس سوبارو** 📜\n✦ ━━━━━━━━━━━ ✦\n\n"
+    "اختر قسم من الأزرار تحت 👇\n\n"
+    "💡 إذا الأزرار ما ظهرت عندك، اكتب القسم مباشرة: `.الاوامر نقل` أو `.الاوامر فحص` أو `.الاوامر الكل`")
 
 
 def section_buttons():
@@ -883,12 +885,25 @@ def section_text(key):
     return f"✦ ━━━━━━━━━━━ ✦\n   📜 **أوامر سورس سوبارو — {label}**\n✦ ━━━━━━━━━━━ ✦\n\n{body}\n\n👇 اختر قسم ثاني من الأزرار تحت"
 
 
-@client.on(events.NewMessage(outgoing=True, pattern=r"^\.(الاوامر|مساعدة)$"))
+@client.on(events.NewMessage(outgoing=True, pattern=r"^\.(الاوامر|مساعدة)(?:\s+(.+))?$"))
 async def commands_list(event):
+    arg = (event.pattern_match.group(2) or "").strip()
     try:
         await event.delete()
     except Exception:
         pass
+    # بديل نصي إذا أزرار الإنلاين ما ظهرت عندك: .الاوامر <القسم>
+    if arg:
+        a = arg.lower()
+        if a in ("all", "الكل", "عرض الكل", "كل"):
+            await client.send_message(event.chat_id, section_text("all"), buttons=section_buttons())
+            return
+        for key, (label, _body) in COMMAND_SECTIONS.items():
+            if a == key or a in label or label.replace(" ", "") in a or a in ("نقل", "فحص", "تسلية", "جدولة", "نظام", "يوتيوب", "ادارة", "إدارة", "بوت", "تحكم", "متقدم", "قروب"):
+                if a == key or a in label:
+                    await client.send_message(event.chat_id, section_text(key), buttons=section_buttons())
+                    return
+        # كلمة مو معروفة — اعرض القائمة الرئيسية
     await client.send_message(event.chat_id, COMMANDS_TEXT, buttons=section_buttons())
 
 
